@@ -7,6 +7,7 @@ import time
 import random
 import os
 import tempfile
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -15,14 +16,13 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.91 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.106 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.6367.91 Safari/537.36 Edg/124.0.2478.80"
-]
+def load_user_agents(file_path="user_agents.txt"):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f.readlines() if line.strip()]
+
+USER_AGENTS = load_user_agents()
 
 def human_move_mouse(driver):
     try:
@@ -53,12 +53,39 @@ def human_think_time():
 class ScraperApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("AI Scraper GUI")
+        self.root.title("AI Scraper GUI - Ultimate Version")
+        self.root.geometry("1200x750")
+        self.root.resizable(False, False)
         self.data = None
         self.tree = None
+        self.stop_flag = False
 
-        tk.Button(root, text="Import CSV", command=self.import_csv).pack(pady=10)
-        tk.Button(root, text="Start Scraping", command=self.start_scraping).pack(pady=10)
+        self.custom_font = ("Arial", 11)
+
+        root.configure(bg="#2c2f33")
+
+        frame = tk.Frame(root, bg="#2c2f33")
+        frame.pack(pady=10)
+
+        self.import_btn = tk.Button(frame, text="Import CSV", command=self.import_csv, font=self.custom_font,
+                                    bg="#3498db", fg="white", padx=20, pady=10)
+        self.import_btn.pack(side="left", padx=10)
+
+        self.start_btn = tk.Button(frame, text="Start Scraping", command=self.start_scraping, font=self.custom_font,
+                                   bg="#2ecc71", fg="white", padx=20, pady=10)
+        self.start_btn.pack(side="left", padx=10)
+
+        self.stop_btn = tk.Button(frame, text="Stop Scraping", command=self.stop_scraping, font=self.custom_font,
+                                  bg="#e74c3c", fg="white", padx=20, pady=10)
+        self.stop_btn.pack(side="left", padx=10)
+
+        self.progress = ttk.Progressbar(root, length=800, mode="determinate")
+        self.progress.pack(pady=10)
+
+        self.progress_label = tk.Label(root, text="", font=self.custom_font, bg="#2c2f33", fg="white")
+        self.progress_label.pack()
+
+        self.saving_label = tk.Label(root, text="", font=self.custom_font, bg="#2c2f33", fg="#00ff00")
 
     def import_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
@@ -70,92 +97,131 @@ class ScraperApp:
     def display_table(self):
         if self.tree:
             self.tree.destroy()
-        self.tree = ttk.Treeview(self.root)
-        self.tree["columns"] = list(self.data.columns)
+        self.tree = ttk.Treeview(self.root, style="mystyle.Treeview")
+        self.tree["columns"] = ["URL", "Title", "Content", "Category"]
         self.tree["show"] = "headings"
 
-        for col in self.data.columns:
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("mystyle.Treeview", font=self.custom_font, rowheight=30, background="#2c2f33",
+                        fieldbackground="#2c2f33", foreground="white")
+        style.configure("mystyle.Treeview.Heading", font=("Arial", 12, "bold"), background="#23272a", foreground="white")
+        style.map('mystyle.Treeview', background=[('selected', '#7289da')])
+
+        for col in ["URL", "Title", "Content", "Category"]:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=200)
+            self.tree.column(col, width=280)
 
-        for index, row in self.data.iterrows():
-            self.tree.insert("", "end", values=list(row))
-
-        self.tree.pack(fill="both", expand=True)
+        self.tree.pack(fill="both", expand=True, pady=10, padx=20)
 
     def start_scraping(self):
         if self.data is not None:
+            self.stop_flag = False
             threading.Thread(target=self.run_scraping, daemon=True).start()
 
+    def stop_scraping(self):
+        self.stop_flag = True
+
     def run_scraping(self):
-        output = self.data.copy()
-        for i, row in output.iterrows():
-            if pd.notna(row["Title"]) and pd.notna(row["Content"]) and pd.notna(row["Category"]):
-                continue
+        output_rows = []
+        scraped_count = 0
+        total_rows = len(self.data)
+
+        for i, row in self.data.iterrows():
+            if self.stop_flag:
+                break
 
             url = row["URL"]
-            success = False
+            if pd.isna(url) or not str(url).strip():
+                messagebox.showwarning("Empty URL", f"Empty URL found at row {i+1}. Scraping stopped.")
+                self.save_output(output_rows)
+                return
 
-            for attempt in range(3):
+            try:
+                print(f"Scraping row {i + 1}: {url}")
+
+                user_agent = random.choice(USER_AGENTS)
+                chrome_options = Options()
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument(f'user-agent={user_agent}')
+                chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                chrome_options.add_experimental_option('useAutomationExtension', False)
+                chrome_options.add_argument("--remote-debugging-port=9222")
+
+                user_data_dir = tempfile.mkdtemp()
+                chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
+
+                driver = webdriver.Chrome(service=Service(), options=chrome_options)
+                driver.get(url)
+
+                human_move_mouse(driver)
+                human_scroll_page(driver)
+                human_think_time()
+
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".title_wrap h1")))
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".description")))
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.breadcrumb")))
+
+                title = driver.find_element(By.CSS_SELECTOR, ".title_wrap h1").text.strip()
+                paragraphs = driver.find_elements(By.CSS_SELECTOR, ".description p")
+                content = "\n\n".join(p.text.strip() for p in paragraphs if p.text.strip())
+                category_raw = driver.find_element(By.CSS_SELECTOR, "a.breadcrumb").text
+                category = category_raw.split("(")[0].strip()
+
+                result_row = {
+                    "URL": url,
+                    "Title": title,
+                    "Content": content,
+                    "Category": category
+                }
+
+                output_rows.append(result_row)
+
+                tag = 'evenrow' if scraped_count % 2 == 0 else 'oddrow'
+                self.tree.insert("", "end", values=(url, title, content, category), tags=(tag,))
+                self.tree.tag_configure('evenrow', background="#2c2f33")
+                self.tree.tag_configure('oddrow', background="#23272a")
+                scraped_count += 1
+
+                progress_percent = int((i+1) / total_rows * 100)
+                self.progress["value"] = progress_percent
+                self.progress_label.config(text=f"{progress_percent}% complete")
+                self.root.update_idletasks()
+
+                driver.quit()
+
+            except TimeoutException:
+                print(f"Timeout at {url}, skipping.")
                 try:
-                    print(f"Scraping row {i + 1}: {url} (Attempt {attempt + 1})")
-
-                    user_agent = random.choice(USER_AGENTS)
-                    chrome_options = Options()
-                    chrome_options.add_argument("--disable-gpu")
-                    chrome_options.add_argument("--no-sandbox")
-                    chrome_options.add_argument(f'user-agent={user_agent}')
-                    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-                    chrome_options.add_experimental_option('useAutomationExtension', False)
-                    chrome_options.add_argument("--remote-debugging-port=9222")
-
-                    user_data_dir = tempfile.mkdtemp()
-                    chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
-
-                    driver = webdriver.Chrome(service=Service(), options=chrome_options)
-                    driver.get(url)
-
-                    human_move_mouse(driver)
-                    human_scroll_page(driver)
-                    human_think_time()
-
-                    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".title_wrap h1")))
-                    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".description")))
-                    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.breadcrumb")))
-
-                    title = driver.find_element(By.CSS_SELECTOR, ".title_wrap h1").text.strip()
-
-                    paragraphs = driver.find_elements(By.CSS_SELECTOR, ".description p")
-                    content = "\n\n".join(p.text.strip() for p in paragraphs if p.text.strip())
-
-                    category_raw = driver.find_element(By.CSS_SELECTOR, "a.breadcrumb").text
-                    category = category_raw.split("(")[0].strip()
-
-                    output.at[i, "Title"] = title
-                    output.at[i, "Content"] = content
-                    output.at[i, "Category"] = category
-
-                    self.tree.item(self.tree.get_children()[i], values=list(output.loc[i]))
-                    success = True
                     driver.quit()
-                    break
+                except:
+                    pass
+                continue
+            except Exception as e:
+                print(f"Error scraping {url}: {e}")
+                try:
+                    driver.quit()
+                except:
+                    pass
+                continue
 
-                except Exception as e:
-                    print(f"Error scraping {url}: {e}")
-                    time.sleep(3 + attempt * 2)
-                    try:
-                        driver.quit()
-                    except:
-                        pass
+        self.save_output(output_rows)
 
-            if not success:
-                output.at[i, "Title"] = "Failed"
-                output.at[i, "Content"] = "Failed"
-                output.at[i, "Category"] = "Failed"
-                self.tree.item(self.tree.get_children()[i], values=list(output.loc[i]))
+    def save_output(self, output_rows):
+        if output_rows:
+            self.saving_label.config(text="Saving file... Please wait...")
+            self.saving_label.pack(pady=10)
+            self.root.update_idletasks()
 
-        output.to_csv(self.file_path.replace(".csv", "_output.csv"), index=False)
-        messagebox.showinfo("Done", "Scraping completed and saved.")
+            df = pd.DataFrame(output_rows)
+            filename = self.file_path.replace(".csv", f"_output_{datetime.now().strftime('%Y-%m-%d_%H-%M')}.csv")
+            df.to_csv(filename, index=False)
+
+            self.saving_label.pack_forget()
+            messagebox.showinfo("Done", f"Scraping completed and saved as {filename}.")
+        else:
+            messagebox.showinfo("Done", "No valid rows scraped. Nothing saved.")
 
 if __name__ == "__main__":
     root = tk.Tk()
