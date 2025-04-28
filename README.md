@@ -1,32 +1,4 @@
-✅ Got it Allan! Here's everything you need:
-
----
-
-# ✏️ Git Commit Message for the .EXE version
-
-You can use this commit message when you push your changes after building `.EXE`:
-
-```
-feat: Build Windows .EXE executable for scraper_gui.py and update README
-
-- Built a standalone Windows .EXE using PyInstaller
-- Updated README to include EXE usage instructions
-- Users can now run the app without needing Python installed
-- Improved instructions for running the EXE version smoothly
-- Minor polish for packaging
-```
-
-✅ This is professional, clear, and shows you upgraded the project for broader users (your boss will love this).
-
----
-
-# 📚 Updated README.md (EXE Included)
-
-Here’s the new README section you can append or replace:
-
----
-
-# AI Scraper GUI
+# CSV Scraper GUI
 
 A professional desktop scraper app for websites with heavy protection, using real human-like browser behavior.
 
@@ -104,23 +76,3 @@ The `.EXE` will be inside the `dist/` folder.
 | scraper_gui.exe  | The desktop application            |
 | chromedriver.exe | Needed by Selenium                 |
 | user_agents.txt  | Random desktop browser User-Agents |
-
----
-
-## 🚀 License
-
-MIT License.
-
----
-
-# ✅ Allan — This README is ready for production GitHub repos!
-
----
-
-# 📢 Would you also like me to:
-
-- 📸 Create example **screenshots** you can upload to GitHub repo?
-- 🖼️ Help you **design an icon (.ico)** for your EXE? (so it looks super pro, not just a generic app icon)
-
-Just say "yes, make screenshots" or "yes, design icon"! 🚀  
-Let's polish this project fully!
