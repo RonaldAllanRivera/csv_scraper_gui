@@ -53,12 +53,13 @@ def human_think_time():
 class ScraperApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("AI Scraper GUI - Ultimate Version")
-        self.root.geometry("1200x750")
+        self.root.title("AI Scraper GUI - Final Patched Version")
+        self.root.geometry("1200x800")
         self.root.resizable(False, False)
         self.data = None
         self.tree = None
         self.stop_flag = False
+        self.pause_flag = False
 
         self.custom_font = ("Arial", 11)
 
@@ -74,6 +75,14 @@ class ScraperApp:
         self.start_btn = tk.Button(frame, text="Start Scraping", command=self.start_scraping, font=self.custom_font,
                                    bg="#2ecc71", fg="white", padx=20, pady=10)
         self.start_btn.pack(side="left", padx=10)
+
+        self.pause_btn = tk.Button(frame, text="Pause Scraping", command=self.pause_scraping, font=self.custom_font,
+                                   bg="#f39c12", fg="white", padx=20, pady=10)
+        self.pause_btn.pack(side="left", padx=10)
+
+        self.continue_btn = tk.Button(frame, text="Continue Scraping", command=self.continue_scraping, font=self.custom_font,
+                                   bg="#8e44ad", fg="white", padx=20, pady=10)
+        self.continue_btn.pack(side="left", padx=10)
 
         self.stop_btn = tk.Button(frame, text="Stop Scraping", command=self.stop_scraping, font=self.custom_font,
                                   bg="#e74c3c", fg="white", padx=20, pady=10)
@@ -106,36 +115,53 @@ class ScraperApp:
         style.configure("mystyle.Treeview", font=self.custom_font, rowheight=30, background="#2c2f33",
                         fieldbackground="#2c2f33", foreground="white")
         style.configure("mystyle.Treeview.Heading", font=("Arial", 12, "bold"), background="#23272a", foreground="white")
-        style.map('mystyle.Treeview', background=[('selected', '#7289da')])
 
         for col in ["URL", "Title", "Content", "Category"]:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=280)
+
+        for index, row in self.data.iterrows():
+            tag = 'evenrow' if index % 2 == 0 else 'oddrow'
+            self.tree.insert("", "end", values=(row["URL"], row.get("Title", ""), row.get("Content", ""), row.get("Category", "")), tags=(tag,))
+
+        self.tree.tag_configure('evenrow', background="#2c2f33")
+        self.tree.tag_configure('oddrow', background="#23272a")
 
         self.tree.pack(fill="both", expand=True, pady=10, padx=20)
 
     def start_scraping(self):
         if self.data is not None:
             self.stop_flag = False
+            self.pause_flag = False
             threading.Thread(target=self.run_scraping, daemon=True).start()
 
     def stop_scraping(self):
         self.stop_flag = True
+
+    def pause_scraping(self):
+        self.pause_flag = True
+
+    def continue_scraping(self):
+        self.pause_flag = False
 
     def run_scraping(self):
         output_rows = []
         scraped_count = 0
         total_rows = len(self.data)
 
-        for i, row in self.data.iterrows():
+        tree_items = self.tree.get_children()
+        for i, item in enumerate(tree_items):
             if self.stop_flag:
                 break
 
-            url = row["URL"]
-            if pd.isna(url) or not str(url).strip():
-                messagebox.showwarning("Empty URL", f"Empty URL found at row {i+1}. Scraping stopped.")
-                self.save_output(output_rows)
-                return
+            while self.pause_flag:
+                time.sleep(0.5)
+
+            values = self.tree.item(item, "values")
+            url = values[0]
+
+            if not url or url.strip() == "":
+                continue
 
             try:
                 print(f"Scraping row {i + 1}: {url}")
@@ -169,42 +195,30 @@ class ScraperApp:
                 category_raw = driver.find_element(By.CSS_SELECTOR, "a.breadcrumb").text
                 category = category_raw.split("(")[0].strip()
 
-                result_row = {
+                self.tree.item(item, values=(url, title, content, category))
+
+                output_rows.append({
                     "URL": url,
                     "Title": title,
                     "Content": content,
                     "Category": category
-                }
-
-                output_rows.append(result_row)
-
-                tag = 'evenrow' if scraped_count % 2 == 0 else 'oddrow'
-                self.tree.insert("", "end", values=(url, title, content, category), tags=(tag,))
-                self.tree.tag_configure('evenrow', background="#2c2f33")
-                self.tree.tag_configure('oddrow', background="#23272a")
-                scraped_count += 1
-
-                progress_percent = int((i+1) / total_rows * 100)
-                self.progress["value"] = progress_percent
-                self.progress_label.config(text=f"{progress_percent}% complete")
-                self.root.update_idletasks()
+                })
 
                 driver.quit()
 
-            except TimeoutException:
-                print(f"Timeout at {url}, skipping.")
-                try:
-                    driver.quit()
-                except:
-                    pass
-                continue
             except Exception as e:
-                print(f"Error scraping {url}: {e}")
+                print(f"Failed to scrape {url}: {e}")
+                self.tree.item(item, values=(url, "Failed", "Failed", "Failed"))
                 try:
                     driver.quit()
                 except:
                     pass
-                continue
+
+            scraped_count += 1
+            progress_percent = int((i+1) / total_rows * 100)
+            self.progress["value"] = progress_percent
+            self.progress_label.config(text=f"{progress_percent}% complete")
+            self.root.update_idletasks()
 
         self.save_output(output_rows)
 
