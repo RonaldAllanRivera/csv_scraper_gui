@@ -95,12 +95,23 @@ class ScraperApp:
 
         self.saving_label = tk.Label(root, text="", font=self.custom_font, bg="#2c2f33", fg="#00ff00")
 
+        self.set_button_states(True, True, False, False, False)
+
+    def set_button_states(self, import_enabled, start_enabled, pause_enabled, continue_enabled, stop_enabled):
+        self.import_btn.config(state="normal" if import_enabled else "disabled")
+        self.start_btn.config(state="normal" if start_enabled else "disabled")
+        self.pause_btn.config(state="normal" if pause_enabled else "disabled")
+        self.continue_btn.config(state="normal" if continue_enabled else "disabled")
+        self.stop_btn.config(state="normal" if stop_enabled else "disabled")
+               
+
     def import_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
         if file_path:
             self.data = pd.read_csv(file_path)
             self.file_path = file_path
             self.display_table()
+            self.set_button_states(False, True, False, False, False)
 
     def display_table(self):
         if self.tree:
@@ -132,16 +143,20 @@ class ScraperApp:
         if self.data is not None:
             self.stop_flag = False
             self.pause_flag = False
+            self.set_button_states(False, False, True, False, True)
             threading.Thread(target=self.run_scraping, daemon=True).start()
 
     def stop_scraping(self):
         self.stop_flag = True
+        self.set_button_states(True, True, False, False, False)
 
     def pause_scraping(self):
         self.pause_flag = True
+        self.set_button_states(False, False, False, True, True)
 
     def continue_scraping(self):
         self.pause_flag = False
+        self.set_button_states(False, False, True, False, True)
 
     def run_scraping(self):
         output_rows = []
@@ -219,6 +234,7 @@ class ScraperApp:
             self.progress_label.config(text=f"{progress_percent}% complete")
             self.root.update_idletasks()
 
+        self.set_button_states(True, True, False, False, False)
         self.save_output(output_rows)
 
     def save_output(self, output_rows):
