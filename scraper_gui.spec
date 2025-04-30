@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['scraper_gui.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[],

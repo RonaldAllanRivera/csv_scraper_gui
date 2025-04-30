@@ -1,6 +1,6 @@
 # CSV Scraper GUI
 
-A professional desktop scraper app for websites with heavy protection, using real human-like browser behavior.
+A professional Python desktop scraper app built with Selenium, Tkinter, and ChromeDriver, designed to handle websites with heavy protection (e.g., Cloudflare) using real human-like browser automation and behavior simulation.
 
 ---
 
@@ -20,42 +20,40 @@ A professional desktop scraper app for websites with heavy protection, using rea
 
 1. Install requirements:
 
-   ```bash
-   pip install pandas selenium pyinstaller
-   ```
+```bash
+pip install -r requirements.txt
+```
 
 2. Download matching **ChromeDriver** for your Chrome version.
-
 3. Run:
 
-   ```bash
-   python scraper_gui.py
-   ```
+```bash
+python main.py
+```
 
 ---
 
 ## 📦 How to Use (Windows EXE Version)
 
-> If you already have the prebuilt `.EXE` (scraper_gui.exe), you don't need Python installed.
+> Already have `scraper_gui.exe`? You don’t need Python.
 
 1. Double-click `scraper_gui.exe`
-2. Use the graphical interface normally:
+2. Use the graphical interface:
    - Import CSV
    - Start, Pause, Continue, Stop scraping
    - CSV output is saved automatically
-3. **Important:** Keep `chromedriver.exe` in the same folder as `scraper_gui.exe`.
+3. **Important:** Keep `chromedriver.exe` in the same folder as `scraper_gui.exe`
 
 ---
 
 ## ⚙️ Build the EXE Yourself (Optional)
 
-If you want to rebuild the EXE manually:
-
 ```bash
-pyinstaller --onefile --noconsole scraper_gui.py
+pyinstaller --onefile --noconsole --name scraper_gui main.py
 ```
 
-The `.EXE` will be inside the `dist/` folder.
+- The `.exe` will appear in the `dist/` folder
+- You can delete the `build/` folder unless you plan to rebuild it again
 
 ---
 
@@ -64,15 +62,17 @@ The `.EXE` will be inside the `dist/` folder.
 | URL | Title | Content | Category |
 | :-- | :---- | :------ | :------- |
 
-- Only `URL` is needed initially.
-- `Title`, `Content`, `Category` are filled by the scraper.
+- Only `URL` is needed initially
+- The rest will be filled by the scraper
 
 ---
 
 ## 📦 Files in Final Folder
 
 | File             | Purpose                            |
-| :--------------- | :--------------------------------- |
-| scraper_gui.exe  | The desktop application            |
+| ---------------- | ---------------------------------- |
+| main.py          | Entry point for Python app         |
+| scraper_gui.exe  | The built Windows application      |
 | chromedriver.exe | Needed by Selenium                 |
 | user_agents.txt  | Random desktop browser User-Agents |
+| requirements.txt | Install dependencies               |
