@@ -1,4 +1,4 @@
-# scraper.py – Browser automation and scraping logic.
+# scraper.py – Browser automation and scraping logic with retry logic.
 
 import tempfile
 import pandas as pd
@@ -12,7 +12,8 @@ from selenium.common.exceptions import TimeoutException
 
 from human_simulation import human_move_mouse, human_scroll_page, human_think_time
 
-def scrape_url(url, user_agent):
+def scrape_url(url, user_agent, retry=False):
+    """Scrape a single URL and return structured result. Retry once if allowed."""
     chrome_options = Options()
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
@@ -24,14 +25,15 @@ def scrape_url(url, user_agent):
     user_data_dir = tempfile.mkdtemp()
     chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
 
-    driver = webdriver.Chrome(service=Service(), options=chrome_options)
-    driver.get(url)
-
-    human_move_mouse(driver)
-    human_scroll_page(driver)
-    human_think_time()
-
+    driver = None
     try:
+        driver = webdriver.Chrome(service=Service(), options=chrome_options)
+        driver.get(url)
+
+        human_move_mouse(driver)
+        human_scroll_page(driver)
+        human_think_time()
+
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".title_wrap h1")))
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".description")))
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.breadcrumb")))
@@ -42,7 +44,7 @@ def scrape_url(url, user_agent):
         category_raw = driver.find_element(By.CSS_SELECTOR, "a.breadcrumb").text
         category = category_raw.split("(")[0].strip()
 
-        result = {
+        return {
             "URL": url,
             "Title": title,
             "Content": content,
@@ -50,17 +52,23 @@ def scrape_url(url, user_agent):
         }
 
     except Exception as e:
-        print(f"Scraping failed: {e}")
-        result = {
+        print(f"[ERROR] Failed scraping {url} — {e}")
+        if not retry:
+            print("Retrying once...")
+            return scrape_url(url, user_agent, retry=True)  # Retry once
+        return {
             "URL": url,
             "Title": "Failed",
             "Content": "Failed",
             "Category": "Failed"
         }
-    finally:
-        driver.quit()
 
-    return result
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except:
+                pass
 
 def save_output(file_path, output_rows):
     df = pd.DataFrame(output_rows)

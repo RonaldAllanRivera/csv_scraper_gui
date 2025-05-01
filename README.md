@@ -67,12 +67,16 @@ pyinstaller --onefile --noconsole --name scraper_gui main.py
 
 ---
 
-## 📦 Files in Final Folder
+## 📁 File Overview
 
-| File             | Purpose                            |
-| ---------------- | ---------------------------------- |
-| main.py          | Entry point for Python app         |
-| scraper_gui.exe  | The built Windows application      |
-| chromedriver.exe | Needed by Selenium                 |
-| user_agents.txt  | Random desktop browser User-Agents |
-| requirements.txt | Install dependencies               |
+| File               | Purpose                                |
+| ------------------ | -------------------------------------- |
+| `main.py`          | App launcher and Tkinter GUI entry     |
+| `scraper.py`       | All scraping logic                     |
+| `gui.py`           | All user interface logic.              |
+| `utils.py`         | User-agent loading and helpers.        |
+| `user_agents.txt`  | Random desktop user agents             |
+| `requirements.txt` | Python packages needed to run          |
+| `setup.py`         | Package definition for `pip install .` |
+| `scraper_gui.exe`  | Windows executable (if prebuilt)       |
+| `chromedriver.exe` | Required by Selenium Chrome automation |
