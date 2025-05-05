@@ -1,4 +1,4 @@
-# setup.py – Optional packaging support.
+# setup.py – Package definition for `pip install .`
 
 from setuptools import setup, find_packages
 

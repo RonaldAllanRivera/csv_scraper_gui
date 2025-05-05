@@ -1,4 +1,4 @@
-# main.py – Entry point to launch the GUI.
+# main.py – App launcher and Tkinter GUI entry.
 
 from gui import ScraperApp
 import tkinter as tk
