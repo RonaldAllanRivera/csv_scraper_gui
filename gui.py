@@ -109,17 +109,19 @@ class ScraperApp:
             self.set_button_states(False, False, True, False, True)
             threading.Thread(target=self.run_scraping, daemon=True).start()
 
-    def stop_scraping(self):
-        self.stop_flag = True
-        self.set_button_states(True, True, False, False, False)
-
     def pause_scraping(self):
         self.pause_flag = True
-        self.set_button_states(False, False, False, True, True)
+        # Disable Stop while paused to avoid inconsistent state
+        self.set_button_states(False, False, False, True, False)
 
     def continue_scraping(self):
         self.pause_flag = False
         self.set_button_states(False, False, True, False, True)
+
+    def stop_scraping(self):
+        self.stop_flag = True
+        self.pause_flag = False  # allow thread to complete
+        self.set_button_states(True, True, False, False, False)
 
     def run_scraping(self):
         tree_items = self.tree.get_children()

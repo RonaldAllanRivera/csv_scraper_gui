@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build folders
+build/
+dist/
+
+# PyInstaller log file
+*.spec
+
+# Temporary files
+*.log
+*.tmp
+
+# User data or temp Chrome profiles
+*.bak
+*.swp
+*.swo
+*.DS_Store
+*.orig
+*.old
+
+# VSCode settings (optional)
+.vscode/
+
+# Virtual environments (if any)
+env/
+venv/
